@@ -65,7 +65,7 @@ public class LaboratoryTest extends JFrame {
                        ACCENT  = new Color(70, 130, 230),
                        DANGER  = new Color(210, 70, 70),
                        SUCCESS = new Color(60, 170, 90);
-
+     // user interface for labtest
     public LaboratoryTest() {
         setTitle("Clinical Laboratory Information System (LIS) Dashboard");
         setSize(1280, 850);
