@@ -127,3 +127,27 @@ class IonizedCalcium extends LabTest {
         this.femaleRange = new ReferenceRange(4.4, 5.2);
     }
 }
+
+class AlkalinePhosphatase extends LabTest {
+    public AlkalinePhosphatase() {
+        super("Alkaline Phosphatase", "U/L", 190.00, "Liver");
+        this.maleRange   = new ReferenceRange(44.0, 147.0);
+        this.femaleRange = new ReferenceRange(44.0, 147.0);
+    }
+}
+
+class Globulin extends LabTest {
+    public Globulin() {
+        super("Globulin", "g/dL", 180.00, "Liver");
+        this.maleRange   = new ReferenceRange(2.0, 3.5);
+        this.femaleRange = new ReferenceRange(2.0, 3.5);
+    }
+}
+
+class Phosphorus extends LabTest {
+    public Phosphorus() {
+        super("Phosphorus", "mg/dL", 170.00, "Electrolytes");
+        this.maleRange   = new ReferenceRange(2.5, 4.5);
+        this.femaleRange = new ReferenceRange(2.5, 4.5);
+    }
+}

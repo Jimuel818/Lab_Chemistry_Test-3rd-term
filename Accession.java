@@ -7,6 +7,8 @@ public class Accession {
     public List<LabTest> tests;
     public String timestamp;
     public String status; // Pending, Preliminary, Final
+    public double packagePrice = 0;
+    public String packageName = "";
 
     public Accession(String accessionNumber, Patient patient, String timestamp) {
         this.accessionNumber = accessionNumber;
@@ -21,6 +23,14 @@ public class Accession {
     }
 
     public double getTotalPrice() {
+        if (packagePrice > 0) {
+            double extra = 0;
+            for (LabTest t : tests) {
+                if (t.fromPackage) continue;
+                extra += t.price;
+            }
+            return packagePrice + extra;
+        }
         double total = 0;
         for (LabTest t : tests) total += t.price;
         return total;

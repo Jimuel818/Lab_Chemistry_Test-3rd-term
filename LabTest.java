@@ -9,7 +9,8 @@ public abstract class LabTest {
     String specimenType;
     String fastingStatus;
     String collectionTime;
-    String status; 
+    String status; // Pending, Preliminary, Final
+    boolean fromPackage = false;
 
     public LabTest(String testName, String unit, double price, String category) {
         this.testName = testName;

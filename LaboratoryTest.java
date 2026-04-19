@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -12,28 +13,49 @@ public class LaboratoryTest extends JFrame {
     RecordManager recordManager = new RecordManager();
     List<LabTest> currentTests = new ArrayList<>();
     List<JTextField> resultFields = new ArrayList<>();
+    double packagePrice = 0;
 
-    // UI
+    // User interface
     JTextField idIn, nameIn, dobIn, ageIn, contactIn;
     JComboBox<String> sexIn, typeIn, specimenIn, fastingIn, packageIn;
-    JList<String> testList;
-    DefaultListModel<String> testListModel;
     JPanel resultPanel;
     JTextArea repArea;
     JLabel totalPriceLabel;
 
+    // Checkbox dropdown for individual test selection
+    JButton testDropdownBtn;
+    JCheckBox[] testCheckBoxes;
+    JPopupMenu testPopup;
+
     DefaultTableModel historyModel;
     JTable historyTable;
+
+    //  RAD user interface
+    JList<String> radiologyTestList;
+    DefaultListModel<String> radiologyListModel;
+    List<RadiologyTest> currentRadiologyTests = new ArrayList<>();
+    List<JTextField> radiologyFindingsFields  = new ArrayList<>();
+    List<JTextField> radiologyImpressionFields = new ArrayList<>();
+    JPanel radiologyResultPanel;
+    JLabel radiologyPriceLabel;
 
     static final String[] INDIVIDUAL_TEST_NAMES = {
         "FBS", "RBS", "Total Cholesterol", "HDL", "LDL", "Triglycerides",
         "Creatinine", "Uric Acid", "BUN", "AST/SGOT", "ALT/SGPT",
-        "Sodium", "Potassium", "Chloride", "Total Calcium", "Ionized Calcium"
+        "Sodium", "Potassium", "Chloride", "Total Calcium", "Ionized Calcium",
+        "Alkaline Phosphatase", "Globulin", "Phosphorus"
     };
 
     static final String[] PACKAGE_NAMES = {
         "-- Select Package --", "Lipid Panel (P650)", "Kidney Function (P450)",
-        "Liver Function (P350)", "Electrolyte Panel (P550)"
+        "Liver Function (P350)" //, "Electrolyte Panel (P550)"
+    };
+
+    // Names shown in the radiology selection list
+    static final String[] RADIOLOGY_TEST_NAMES = {
+        "Chest X-Ray (PA View)",
+        "Whole Abdomen Ultrasound",
+        "KUB X-Ray"
     };
 
     static final Color BG      = new Color(18, 18, 24),
@@ -51,34 +73,75 @@ public class LaboratoryTest extends JFrame {
         setLayout(new BorderLayout(0, 0));
         getContentPane().setBackground(BG);
 
-        JPanel mainDashboard = new JPanel(new GridLayout(1, 3, 10, 0));
-        mainDashboard.setBackground(BG);
-        mainDashboard.setBorder(new EmptyBorder(15, 15, 15, 15));
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.setBackground(BG);
+        tabs.setForeground(FG);
 
-        mainDashboard.add(buildPatientColumn());
-        mainDashboard.add(buildTestColumn());
-        mainDashboard.add(buildHistoryColumn());
+        JPanel labDashboard = new JPanel(new GridLayout(1, 3, 10, 0));
+        labDashboard.setBackground(BG);
+        labDashboard.setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        add(mainDashboard, BorderLayout.CENTER);
-        add(buildBottomReportArea(), BorderLayout.SOUTH);
+        labDashboard.add(buildPatientColumn());
+        labDashboard.add(buildTestColumn());
+        labDashboard.add(buildHistoryColumn());
+
+        JPanel labTab = new JPanel(new BorderLayout(0, 0));
+        labTab.setBackground(BG);
+        labTab.add(labDashboard, BorderLayout.CENTER);
+        labTab.add(buildBottomReportArea(), BorderLayout.SOUTH);
+
+        tabs.addTab("Laboratory", labTab);
+        tabs.addTab("Radiology", buildRadiologyTab());
+
+        add(tabs, BorderLayout.CENTER);
 
         idIn.setText(recordManager.generatePatientID());
     }
     //input patient column AND UI
 
     private JPanel buildPatientColumn() {
-        JPanel col = columnPanel("1. PATIENT & SPECIMEN");
-        JPanel form = darkPanel(new GridLayout(0, 1, 5, 5));
-        form.add(label("Patient ID (Auto)")); idIn = darkField(10); idIn.setEditable(false); form.add(idIn);
-        form.add(label("Full Name")); nameIn = darkField(15); form.add(nameIn);
-        form.add(label("Date of Birth (YYYY-MM-DD)")); dobIn = darkField(10); form.add(dobIn);
-        form.add(label("Age")); ageIn = darkField(3); form.add(ageIn);
-        form.add(label("Sex")); sexIn = darkCombo(new String[]{"Male", "Female"}); form.add(sexIn);
-        form.add(label("Contact Number")); contactIn = darkField(12); form.add(contactIn);
-        form.add(label("Patient Type")); typeIn = darkCombo(new String[]{"Outpatient", "Inpatient", "ER"}); form.add(typeIn);
-        form.add(label("Specimen Type")); specimenIn = darkCombo(new String[]{"Serum", "Plasma", "Whole Blood", "Urine"}); form.add(specimenIn);
-        form.add(label("Fasting Status")); fastingIn = darkCombo(new String[]{"Fasting", "Non-fasting", "Not indicated"}); form.add(fastingIn);
-        col.add(form, BorderLayout.CENTER);
+        JPanel col = columnPanel("PATIENT & SPECIMEN");
+
+        // FIX: wrap form in a JScrollPane so all fields are visible and not cut off
+        JPanel form = new JPanel(new GridLayout(0, 1, 5, 5));
+        form.setBackground(BG);
+
+        form.add(label("Patient ID (Auto)"));
+        idIn = darkField(10); idIn.setEditable(false); form.add(idIn);
+
+        form.add(label("Full Name"));
+        nameIn = darkField(15); form.add(nameIn);
+
+        form.add(label("Date of Birth (YYYY-MM-DD)"));
+        dobIn = darkField(10); form.add(dobIn);
+
+        form.add(label("Age"));
+        ageIn = darkField(3); form.add(ageIn);
+
+        form.add(label("Sex"));
+        sexIn = darkCombo(new String[]{"Male", "Female"}); form.add(sexIn);
+
+        form.add(label("Contact Number"));
+        contactIn = darkField(12); form.add(contactIn);
+
+        form.add(label("Patient Type"));
+        typeIn = darkCombo(new String[]{"Outpatient", "Inpatient", "ER"}); form.add(typeIn);
+
+        form.add(label("Specimen Type"));
+        specimenIn = darkCombo(new String[]{"Serum", "Plasma", "Whole Blood", "Urine"}); form.add(specimenIn);
+
+        form.add(label("Fasting Status"));
+        fastingIn = darkCombo(new String[]{"Fasting", "Non-fasting", "Not indicated"}); form.add(fastingIn);
+
+        // FIX: wrap in scroll pane so fields are never clipped
+        JScrollPane formScroll = new JScrollPane(form);
+        formScroll.setBorder(BorderFactory.createEmptyBorder());
+        formScroll.getViewport().setBackground(BG);
+        formScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        formScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        col.add(formScroll, BorderLayout.CENTER);
+
         JButton newPatientBtn = successButton("NEW PATIENT");
         newPatientBtn.addActionListener(e -> resetForNewPatient());
         col.add(newPatientBtn, BorderLayout.SOUTH);
@@ -87,17 +150,71 @@ public class LaboratoryTest extends JFrame {
     //testing column and UI
 
     private JPanel buildTestColumn() {
-        JPanel col = columnPanel("2. TEST SELECTION");
-        testListModel = new DefaultListModel<>();
-        for (String n : INDIVIDUAL_TEST_NAMES) testListModel.addElement(n);
-        testList = new JList<>(testListModel);
-        testList.setBackground(SURFACE); testList.setForeground(FG);
-        testList.setSelectionBackground(ACCENT);
-        JScrollPane listScroll = new JScrollPane(testList);
-        styleScroll(listScroll);
+        JPanel col = columnPanel("TEST SELECTION");
+
+        // FIX: Checkbox dropdown — button shows/hides a popup with checkboxes
+        testCheckBoxes = new JCheckBox[INDIVIDUAL_TEST_NAMES.length];
+        testPopup = new JPopupMenu();
+        testPopup.setBackground(SURFACE);
+        testPopup.setBorder(BorderFactory.createLineBorder(BORDER));
+
+        // "Select All" / "Clear All" row at the top of popup
+        JPanel popupHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        popupHeader.setBackground(SURFACE);
+        JButton selAllBtn = new JButton("Select All");
+        JButton clrAllBtn = new JButton("Clear All");
+        selAllBtn.setBackground(ACCENT); selAllBtn.setForeground(Color.WHITE);
+        selAllBtn.setFocusPainted(false); selAllBtn.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        clrAllBtn.setBackground(DANGER); clrAllBtn.setForeground(Color.WHITE);
+        clrAllBtn.setFocusPainted(false); clrAllBtn.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        selAllBtn.addActionListener(e -> { for (JCheckBox cb : testCheckBoxes) cb.setSelected(true); updateDropdownLabel(); });
+        clrAllBtn.addActionListener(e -> { for (JCheckBox cb : testCheckBoxes) cb.setSelected(false); updateDropdownLabel(); });
+        popupHeader.add(selAllBtn);
+        popupHeader.add(clrAllBtn);
+        testPopup.add(popupHeader);
+        testPopup.addSeparator();
+
+        // Panel that holds all checkboxes
+        JPanel checkboxContainer = new JPanel();
+        checkboxContainer.setLayout(new BoxLayout(checkboxContainer, BoxLayout.Y_AXIS));
+        checkboxContainer.setBackground(SURFACE);
+
+        // Add checkboxes
+        for (int i = 0; i < INDIVIDUAL_TEST_NAMES.length; i++) {
+            testCheckBoxes[i] = new JCheckBox(INDIVIDUAL_TEST_NAMES[i]);
+            testCheckBoxes[i].setBackground(SURFACE);
+            testCheckBoxes[i].setForeground(FG);
+            testCheckBoxes[i].setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+            testCheckBoxes[i].addActionListener(e -> updateDropdownLabel());
+
+            checkboxContainer.add(testCheckBoxes[i]);
+        }
+
+        // Wrap in scroll pane
+        JScrollPane scrollPane = new JScrollPane(checkboxContainer);
+        scrollPane.setPreferredSize(new Dimension(250, 200)); // controls visible height
+        scrollPane.setBorder(null);
+
+        // Add to popup
+        testPopup.add(scrollPane);
+
+        // Dropdown trigger button
+        testDropdownBtn = new JButton("Select Individual Tests ▼");
+        testDropdownBtn.setBackground(SURFACE);
+        testDropdownBtn.setForeground(FG);
+        testDropdownBtn.setFocusPainted(false);
+        testDropdownBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER), new EmptyBorder(5, 8, 5, 8)));
+        testDropdownBtn.addActionListener(e -> {
+            testPopup.setPreferredSize(new Dimension(testDropdownBtn.getWidth(), 320));
+            testPopup.show(testDropdownBtn, 0, testDropdownBtn.getHeight());
+        });
+
         JPanel top = darkPanel(new BorderLayout(0, 5));
         top.add(label("Select Individual Tests:"), BorderLayout.NORTH);
-        top.add(listScroll, BorderLayout.CENTER);
+        top.add(testDropdownBtn, BorderLayout.CENTER);
+
         JPanel mid = darkPanel(new BorderLayout(0, 5));
         mid.add(label("Or Select Package:"), BorderLayout.NORTH);
         packageIn = darkCombo(PACKAGE_NAMES);
@@ -105,12 +222,14 @@ public class LaboratoryTest extends JFrame {
         JButton loadBtn = accentButton("LOAD SELECTED TESTS");
         loadBtn.addActionListener(e -> loadTests());
         mid.add(loadBtn, BorderLayout.SOUTH);
+
         resultPanel = darkPanel(new GridLayout(0, 1, 2, 2));
         JScrollPane resScroll = new JScrollPane(resultPanel);
         styleScroll(resScroll);
         JPanel center = darkPanel(new BorderLayout(0, 5));
         center.add(label("Enter Results:"), BorderLayout.NORTH);
         center.add(resScroll, BorderLayout.CENTER);
+
         col.add(top, BorderLayout.NORTH);
         col.add(center, BorderLayout.CENTER);
         col.add(mid, BorderLayout.SOUTH);
@@ -119,7 +238,7 @@ public class LaboratoryTest extends JFrame {
     //history column and ui
 
     private JPanel buildHistoryColumn() {
-        JPanel col = columnPanel("3. RECORDS HISTORY");
+        JPanel col = columnPanel("RECORDS HISTORY");
         String[] cols = {"ID", "Patient Name", "Date", "Status"};
         historyModel = new DefaultTableModel(cols, 0);
         historyTable = new JTable(historyModel);
@@ -168,34 +287,46 @@ public class LaboratoryTest extends JFrame {
         return p;
     }
 
+    // Updates the dropdown button label to show how many tests are checked
+    private void updateDropdownLabel() {
+        int count = 0;
+        for (JCheckBox cb : testCheckBoxes) if (cb.isSelected()) count++;
+        testDropdownBtn.setText(count == 0 ? "Select Individual Tests ▼" : count + " test(s) selected ▼");
+    }
+
     private void loadTests() {
         currentTests.clear(); resultFields.clear(); resultPanel.removeAll();
+        packagePrice = 0;
 
         // this block of code prevents duplication of test
         List<String> addedTestNames = new ArrayList<>();
 
-        for (int i : testList.getSelectedIndices()) {
-            String testName = INDIVIDUAL_TEST_NAMES[i];
-            if (!addedTestNames.contains(testName)) {
-                LabTest t = makeTest(testName);
-                if (t != null) {
-                    currentTests.add(t);
-                    addedTestNames.add(testName);
+        // Read from checkboxes instead of JList
+        for (int i = 0; i < testCheckBoxes.length; i++) {
+            if (testCheckBoxes[i].isSelected()) {
+                String testName = INDIVIDUAL_TEST_NAMES[i];
+                if (!addedTestNames.contains(testName)) {
+                    LabTest t = makeTest(testName);
+                    if (t != null) {
+                        currentTests.add(t);
+                        addedTestNames.add(testName);
+                    }
                 }
             }
         }
-
+        ////
         int pkgIdx = packageIn.getSelectedIndex();
         if (pkgIdx > 0) {
             TestPackage pkg = makePackage(pkgIdx);
             if (pkg != null) {
+                packagePrice = pkg.packagePrice;
                 for (LabTest t : pkg.getTests()) {
                     if (!addedTestNames.contains(t.testName)) {
+                        t.fromPackage = true;
                         currentTests.add(t);
                         addedTestNames.add(t.testName);
                     }
                 }
-               
             }
         }
 
@@ -215,8 +346,10 @@ public class LaboratoryTest extends JFrame {
             return;
         }
         try {
-            if (nameIn.getText().trim().isEmpty()) throw new Exception("Name is required.");
-            if (ageIn.getText().trim().isEmpty()) throw new Exception("Age is required.");
+            if (nameIn.getText().trim().isEmpty())
+                 throw new Exception("Name is required.");
+            if (ageIn.getText().trim().isEmpty()) 
+                throw new Exception("Age is required.");
 
             Patient p = new Patient(
                 idIn.getText(), nameIn.getText(), dobIn.getText(),
@@ -240,6 +373,7 @@ public class LaboratoryTest extends JFrame {
             }
             acc.updateStatus();
             recordManager.addAccession(acc);
+            acc.packagePrice = packagePrice;
             viewSelectedRecord(recordManager.getAccessions().size() - 1);
             historyModel.addRow(new Object[]{acc.accessionNumber, p.name, time, acc.status});
 
@@ -287,11 +421,13 @@ public class LaboratoryTest extends JFrame {
     }
 
     private void resetForNewTest() {
-        testList.clearSelection();
+        for (JCheckBox cb : testCheckBoxes) cb.setSelected(false);
+        updateDropdownLabel();
         packageIn.setSelectedIndex(0);
         resultPanel.removeAll();
         resultFields.clear();
         currentTests.clear();
+        packagePrice = 0;
         updatePrice();
         resultPanel.revalidate();
         resultPanel.repaint();
@@ -305,8 +441,18 @@ public class LaboratoryTest extends JFrame {
     }
 
     private void updatePrice() {
-        double total = 0;
-        for (LabTest t : currentTests) total += t.price;
+        double total = packagePrice;
+        if (packagePrice == 0) {
+            for (LabTest t : currentTests) total += t.price;
+        } else {
+            int pkgIdx = packageIn.getSelectedIndex();
+            TestPackage pkg = pkgIdx > 0 ? makePackage(pkgIdx) : null;
+            List<String> pkgTestNames = new ArrayList<>();
+            if (pkg != null) for (LabTest t : pkg.getTests()) pkgTestNames.add(t.testName);
+            for (LabTest t : currentTests) {
+                if (!pkgTestNames.contains(t.testName)) total += t.price;
+            }
+        }
         totalPriceLabel.setText("  Total: P" + String.format("%.2f", total));
     }
 
@@ -344,6 +490,12 @@ public class LaboratoryTest extends JFrame {
             return new TotalCalcium();
             case "Ionized Calcium":  
             return new IonizedCalcium();
+            case "Alkaline Phosphatase":
+            return new AlkalinePhosphatase();
+            case "Globulin":
+            return new Globulin();
+            case "Phosphorus":
+            return new Phosphorus();
             default:                 
             return null;
         }
@@ -416,6 +568,242 @@ public class LaboratoryTest extends JFrame {
     private JButton dangerButton(String t) {
         JButton b = new JButton(t); b.setBackground(DANGER);
         b.setForeground(Color.WHITE); b.setFocusPainted(false); return b;
+    }
+
+    private JPanel buildRadiologyTab() {
+        JPanel tab = new JPanel(new BorderLayout(0, 0));
+        tab.setBackground(BG);
+
+        JPanel dashboard = new JPanel(new GridLayout(1, 2, 10, 0));
+        dashboard.setBackground(BG);
+        dashboard.setBorder(new EmptyBorder(15, 15, 10, 15));
+
+        dashboard.add(buildRadiologySelectionColumn());
+        dashboard.add(buildRadiologyReportInputColumn());
+
+        tab.add(dashboard, BorderLayout.CENTER);
+        tab.add(buildRadiologyBottomArea(), BorderLayout.SOUTH);
+        return tab;
+    }
+
+    private JPanel buildRadiologySelectionColumn() {
+        JPanel col = columnPanel("RADIOLOGY EXAM SELECTION");
+
+        JPanel infoNote = darkPanel(new GridLayout(0, 1, 3, 3));
+        infoNote.add(label("* Patient details are entered in the Laboratory tab."));
+        infoNote.add(label("  Fill in patient info there before generating a radiology report."));
+        col.add(infoNote, BorderLayout.NORTH);
+
+        // Radiology exam list
+        radiologyListModel = new DefaultListModel<>();
+        for (String n : RADIOLOGY_TEST_NAMES) radiologyListModel.addElement(n);
+        radiologyTestList = new JList<>(radiologyListModel);
+        radiologyTestList.setBackground(SURFACE);
+        radiologyTestList.setForeground(FG);
+        radiologyTestList.setSelectionBackground(ACCENT);
+
+        JScrollPane listScroll = new JScrollPane(radiologyTestList);
+        styleScroll(listScroll);
+
+        JPanel listWrapper = darkPanel(new BorderLayout(0, 5));
+        listWrapper.add(label("Select Radiology Exam(s):"), BorderLayout.NORTH);
+        listWrapper.add(listScroll, BorderLayout.CENTER);
+
+        JButton loadBtn = accentButton("LOAD SELECTED EXAMS");
+        loadBtn.addActionListener(e -> loadRadiologyTests());
+        listWrapper.add(loadBtn, BorderLayout.SOUTH);
+
+        col.add(listWrapper, BorderLayout.CENTER);
+        return col;
+    }
+
+    private JPanel buildRadiologyReportInputColumn() {
+        JPanel col = columnPanel("FINDINGS & IMPRESSION");
+
+        radiologyResultPanel = darkPanel(new GridLayout(0, 1, 4, 4));
+        JScrollPane scroll = new JScrollPane(radiologyResultPanel);
+        styleScroll(scroll);
+
+        col.add(label("Enter Findings and Impression per exam:"), BorderLayout.NORTH);
+        col.add(scroll, BorderLayout.CENTER);
+        return col;
+    }
+
+    private JPanel buildRadiologyBottomArea() {
+        JPanel p = darkPanel(new BorderLayout());
+        p.setBorder(new EmptyBorder(0, 15, 15, 15));
+
+        JPanel header = darkPanel(new BorderLayout());
+
+        radiologyPriceLabel = new JLabel("  Radiology Total: P0.00");
+        radiologyPriceLabel.setForeground(ACCENT);
+        radiologyPriceLabel.setFont(new Font("Monospaced", Font.BOLD, 16));
+        header.add(radiologyPriceLabel, BorderLayout.WEST);
+
+        JPanel btns = darkPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton genBtn  = successButton("GENERATE RADIOLOGY REPORT");
+        JButton clrBtn  = dangerButton("CLEAR RADIOLOGY");
+        genBtn.addActionListener(e -> generateRadiologyReport());
+        clrBtn.addActionListener(e -> clearRadiology());
+        btns.add(genBtn);
+        btns.add(clrBtn);
+        header.add(btns, BorderLayout.EAST);
+        p.add(header, BorderLayout.NORTH);
+
+        JTextArea radRepArea = new JTextArea(10, 80);
+        radRepArea.setName("radRepArea");
+        radRepArea.setEditable(false);
+        radRepArea.setBackground(SURFACE);
+        radRepArea.setForeground(FG);
+        radRepArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        JScrollPane scroll = new JScrollPane(radRepArea);
+        styleScroll(scroll);
+        // Store reference so generateRadiologyReport() can write into it
+        this.radReportArea = radRepArea;
+        p.add(scroll, BorderLayout.CENTER);
+        return p;
+    }
+
+    // Separate text area for the radiology report display
+    JTextArea radReportArea;
+
+    private void loadRadiologyTests() {
+        currentRadiologyTests.clear();
+        radiologyFindingsFields.clear();
+        radiologyImpressionFields.clear();
+        radiologyResultPanel.removeAll();
+
+        for (int i : radiologyTestList.getSelectedIndices()) {
+            RadiologyTest rt = makeRadiologyTest(RADIOLOGY_TEST_NAMES[i]);
+            if (rt == null) continue;
+            currentRadiologyTests.add(rt);
+
+            JLabel examLabel = new JLabel("  " + rt.testName
+                + "  |  " + rt.modality
+                + "  |  Technique: " + rt.technique
+                + "  |  P" + String.format("%.2f", rt.price));
+            examLabel.setForeground(ACCENT);
+            examLabel.setFont(new Font("SansSerif", Font.BOLD, 11));
+            radiologyResultPanel.add(examLabel);
+
+            // Findings row
+            JPanel findingsRow = darkPanel(new FlowLayout(FlowLayout.LEFT));
+            JLabel fLbl = new JLabel("Findings   :");
+            fLbl.setForeground(FG);
+            JTextField fField = darkField(40);
+            fField.setPreferredSize(new Dimension(380, 24));
+            radiologyFindingsFields.add(fField);
+            findingsRow.add(fLbl);
+            findingsRow.add(fField);
+            radiologyResultPanel.add(findingsRow);
+
+            // Impression row
+            JPanel impressionRow = darkPanel(new FlowLayout(FlowLayout.LEFT));
+            JLabel iLbl = new JLabel("Impression :");
+            iLbl.setForeground(FG);
+            JTextField iField = darkField(40);
+            iField.setPreferredSize(new Dimension(380, 24));
+            radiologyImpressionFields.add(iField);
+            impressionRow.add(iLbl);
+            impressionRow.add(iField);
+            radiologyResultPanel.add(impressionRow);
+
+            JLabel sep = new JLabel("  ---------------------------------------------------------------");
+            sep.setForeground(BORDER);
+            radiologyResultPanel.add(sep);
+        }
+
+        updateRadiologyPrice();
+        radiologyResultPanel.revalidate();
+        radiologyResultPanel.repaint();
+    }
+
+    private RadiologyTest makeRadiologyTest(String name) {
+        switch (name) {
+            case "Chest X-Ray (PA View)":    
+              return new ChestXray();
+            case "Whole Abdomen Ultrasound": 
+              return new WholeAbdomenUltrasound();
+            case "KUB X-Ray":        
+                      return new KUBXray();
+            default:           
+                     return null;
+        }
+    }
+
+    private void generateRadiologyReport() {
+        if (currentRadiologyTests.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No radiology exams loaded. Please select and load exams first.");
+            return;
+        }
+        try {
+            if (nameIn.getText().trim().isEmpty()) 
+                throw new Exception("Patient name is required. Fill in the Laboratory tab first.");
+            if (ageIn.getText().trim().isEmpty()) 
+                throw new Exception("Patient age is required. Fill in the Laboratory tab first.");
+
+            for (int i = 0; i < currentRadiologyTests.size(); i++) {
+                String findings   = radiologyFindingsFields.get(i).getText().trim();
+                String impression = radiologyImpressionFields.get(i).getText().trim();
+                if (findings.isEmpty())   
+                    throw new Exception("Findings missing for: " + currentRadiologyTests.get(i).testName);
+                if (impression.isEmpty()) 
+                    throw new Exception("Impression missing for: " + currentRadiologyTests.get(i).testName);
+                currentRadiologyTests.get(i).setReport(findings, impression);
+            }
+
+            String patientID   = idIn.getText();
+            String patientName = nameIn.getText();
+            String dob         = dobIn.getText();
+            String age         = ageIn.getText().trim();
+            String sex         = (String) sexIn.getSelectedItem();
+            String time        = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+            // Compute total radiology price
+            double radTotal = 0;
+            for (RadiologyTest rt : currentRadiologyTests) 
+                radTotal += rt.price;
+
+            // Disyplay radiology report
+            StringBuilder sb = new StringBuilder();
+            sb.append("================================================================================\n");
+            sb.append("                       RADIOLOGY DEPARTMENT REPORT                             \n");
+            sb.append("================================================================================\n");
+            sb.append(String.format(" Patient ID : %-20s  Patient Name: %s\n", patientID, patientName));
+            sb.append(String.format(" Age / Sex  : %s / %-15s  DOB: %s\n", age, sex, dob));
+            sb.append(String.format(" Date/Time  : %s\n", time));
+            sb.append("--------------------------------------------------------------------------------\n");
+            for (RadiologyTest rt : currentRadiologyTests) {
+                sb.append(rt.getFormattedReport());
+                sb.append("--------------------------------------------------------------------------------\n");
+            }
+            sb.append(String.format(" TOTAL RADIOLOGY CHARGES: P%.2f\n", radTotal));
+            sb.append("================================================================================\n");
+
+            radReportArea.setText(sb.toString());
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+        }
+    }
+
+    // Clears all radiology selections and input fields
+    private void clearRadiology() {
+        radiologyTestList.clearSelection();
+        currentRadiologyTests.clear();
+        radiologyFindingsFields.clear();
+        radiologyImpressionFields.clear();
+        radiologyResultPanel.removeAll();
+        radiologyResultPanel.revalidate();
+        radiologyResultPanel.repaint();
+        updateRadiologyPrice();
+        if (radReportArea != null) radReportArea.setText("");
+    }
+
+    private void updateRadiologyPrice() {
+        double total = 0;
+        for (RadiologyTest rt : currentRadiologyTests) total += rt.price;
+        radiologyPriceLabel.setText("  Radiology Total: P" + String.format("%.2f", total));
     }
 
     public static void main(String[] args) {
