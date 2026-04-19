@@ -102,7 +102,6 @@ public class LaboratoryTest extends JFrame {
     private JPanel buildPatientColumn() {
         JPanel col = columnPanel("PATIENT & SPECIMEN");
 
-        // FIX: wrap form in a JScrollPane so all fields are visible and not cut off
         JPanel form = new JPanel(new GridLayout(0, 1, 5, 5));
         form.setBackground(BG);
 
